@@ -27,7 +27,7 @@ obj/
 *.apk
 sysinfo.txt
 
-# KSP references (не коммитить игровые DLL)
+# KSP references (do not commit game DLLs)
 References/
 KSP_Data/
 KSP_x64_Data/
