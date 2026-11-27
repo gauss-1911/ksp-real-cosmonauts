@@ -21,6 +21,7 @@ Early development. Code and assets are a work in progress.
 ## Developers
 
 - **gauss** ([@gauss-1911](https://github.com/gauss-1911))
+- **Claude** (AI assistant by [Anthropic](https://www.anthropic.com))
 
 ## License
 
