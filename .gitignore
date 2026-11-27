@@ -1,0 +1,40 @@
+# Build output
+bin/
+obj/
+[Bb]uild/
+*.dll
+*.pdb
+*.mdb
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.csproj.user
+
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+*.pidb
+*.booproj
+*.unityproj
+*.apk
+sysinfo.txt
+
+# KSP references (do not commit game DLLs)
+References/
+KSP_Data/
+KSP_x64_Data/
+
+# Release archives
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
