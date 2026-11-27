@@ -169,7 +169,12 @@ namespace RealCosmonauts
                     sb.AppendLine($"  blendShapes ({mesh.blendShapeCount}): {string.Join(", ", shapes)}");
                 }
                 if (meshExportBase != null)
-                    sb.AppendLine("  obj: " + ExportObj(mesh, meshExportBase + "__" + Sanitize(path)));
+                {
+                    // Windows paths are limited to 260 characters, so name files after the renderer
+                    // only, plus a short hash of its full path to keep them unique.
+                    string shortName = Sanitize(renderer.name) + "_" + ((uint)path.GetHashCode()).ToString("x8");
+                    sb.AppendLine("  obj: " + ExportObj(mesh, meshExportBase + "__" + shortName));
+                }
             }
             else
             {
