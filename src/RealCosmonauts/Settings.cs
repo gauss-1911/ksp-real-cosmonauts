@@ -17,6 +17,13 @@ namespace RealCosmonauts
         /// <summary>Master switch for replacing Kerbal meshes with the mod's models.</summary>
         public static bool ReplaceModels = true;
 
+        /// <summary>Scale of the human head relative to real human size (prototype tuning).</summary>
+        public static float HeadScale = 1.0f;
+
+        /// <summary>Head models (file names in Models/ without .rcm) for male and female Kerbals.</summary>
+        public static string MaleHead = "male_a";
+        public static string FemaleHead = "female_a";
+
         public static void Load()
         {
             ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes(NodeName);
@@ -32,9 +39,13 @@ namespace RealCosmonauts
                 node.TryGetValue("dumpKerbalModels", ref DumpKerbalModels);
                 node.TryGetValue("exportMeshes", ref ExportMeshes);
                 node.TryGetValue("replaceModels", ref ReplaceModels);
+                node.TryGetValue("headScale", ref HeadScale);
+                node.TryGetValue("maleHead", ref MaleHead);
+                node.TryGetValue("femaleHead", ref FemaleHead);
             }
 
-            Log.Info($"Settings: dumpKerbalModels={DumpKerbalModels}, exportMeshes={ExportMeshes}, replaceModels={ReplaceModels}");
+            Log.Info($"Settings: dumpKerbalModels={DumpKerbalModels}, exportMeshes={ExportMeshes}, replaceModels={ReplaceModels}, " +
+                     $"headScale={HeadScale}, maleHead={MaleHead}, femaleHead={FemaleHead}");
         }
     }
 }
