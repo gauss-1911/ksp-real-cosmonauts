@@ -33,6 +33,29 @@ Kerbal models.
    (`dumpKerbalModels`) samples every clip and lists which bones move or scale, which
    answers this before any modelling starts.
 
+## Survey results (KSP 1.12.5, male Kerbals)
+
+- IVA Kerbals: `Animator` with controller `KerbalIVAExpression`. EVA Kerbals: legacy
+  `Animation` (108 clips) plus `Animator` `KerbalEVAExpression`.
+- Animations translate only the mouth bones, the root (`globalMove01`) and the pelvis
+  (`bn_spA01`), and scale nothing except the parachute canopy. Limb, spine and neck
+  lengths are therefore free to change.
+- EVA Kerbal: feet at y = 0, head top at 0.82 m. The head mesh (`headMesh01` IVA,
+  `headMesh02` EVA, about 900 vertices) spans y 0.33 to 0.82, so the head is about
+  60% of the height. It is skinned to `bn_headPivot_a01`, `bn_headPivot_b01`,
+  `bn_lowerJaw01`, `bn_upperJaw01`, the mouth bones, `bn_neck01` and `bn_spD01`.
+- Eyes, pupils, teeth and tongue are separate skinned meshes under `model01/head02`.
+
+## Head swap (prototype)
+
+`HeadSwapper` adds a `RealCosmonautsHead` skinned mesh next to the stock head, using
+the stock bones and bind poses. The mesh comes from an `.rcm` file (see `RcmMesh.cs`)
+written by `art/tools/make_heads.py`; MakeHuman's skin weights are mapped to Kerbal
+bones (`jaw` to `bn_lowerJaw01`, neck bones to the neck chain, the rest to the skull).
+The head is placed with its neck pivot on `bn_headPivot_a01` and scaled by `headScale`.
+The stock head, eyes, teeth and tongue get an empty mesh, so mods that retexture or
+toggle them (such as TextureReplacer) cannot bring them back.
+
 ## Developer tools
 
 Set `dumpKerbalModels = true` (and optionally `exportMeshes = true`) in

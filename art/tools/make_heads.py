@@ -357,7 +357,64 @@ def eye_material(texture_path, color):
     return mat
 
 
+# MakeHuman bones (default rig) mapped to the stock Kerbal head bones they move with.
+# Anything not listed follows the skull.
+KERBAL_SKULL = "bn_headPivot_b01"
+MH_TO_KERBAL = {
+    "jaw": "bn_lowerJaw01",
+    "neck03": "bn_headPivot_a01",
+    "neck02": "bn_neck01",
+    "neck01": "bn_spD01",
+    "spine01": "bn_spD01", "spine02": "bn_spD01",
+    "clavicle.L": "bn_spD01", "clavicle.R": "bn_spD01",
+    "shoulder01.L": "bn_spD01", "shoulder01.R": "bn_spD01",
+}
+
+
+def add_bone_weights(obj, remap, data_dir):
+    """Creates one vertex group per Kerbal bone from MakeHuman's default skin weights."""
+    import json
+    with open(os.path.join(data_dir, "rigs", "default_weights.mhw"), encoding="utf-8") as f:
+        mh_weights = json.load(f)["weights"]
+    per_vertex = {}
+    for mh_bone, pairs in mh_weights.items():
+        target = MH_TO_KERBAL.get(mh_bone, KERBAL_SKULL)
+        for i, w in pairs:
+            if i in remap:
+                slot = per_vertex.setdefault(remap[i], {})
+                slot[target] = slot.get(target, 0.0) + w
+    groups = {}
+    for v in obj.data.vertices:
+        weights = per_vertex.get(v.index) or {KERBAL_SKULL: 1.0}
+        for bone, w in weights.items():
+            if bone not in groups:
+                groups[bone] = obj.vertex_groups.new(name=bone)
+            groups[bone].add([v.index], w, "REPLACE")
+
+
+def normalize_uvs(obj):
+    """MakeHuman's UV map covers the whole body; stretch the head's part to fill the texture."""
+    uv = obj.data.uv_layers.active.data
+    us = [d.uv.x for d in uv]
+    vs = [d.uv.y for d in uv]
+    u0, v0 = min(us), min(vs)
+    size = max(max(us) - u0, max(vs) - v0)
+    for d in uv:
+        d.uv = ((d.uv.x - u0) / size, (d.uv.y - v0) / size)
+
+
+def bisect(obj, point, normal):
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=point,
+                           plane_no=normal, clear_inner=True)
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+
+
 def build_head(data_dir, name, gender, seed, tone, eye_color, location):
+    """Builds a head. Returns (preview object, game object, eyes object, head pivot)."""
     coords, uvs, faces = parse_obj(os.path.join(data_dir, "3dobjs", "base.obj"))
     morphed = apply_targets(coords, data_dir, recipe(data_dir, gender, seed))
 
@@ -366,6 +423,8 @@ def build_head(data_dir, name, gender, seed, tone, eye_color, location):
     keep = lambda i: faces[i][2] == "body" and all(morphed[v].y >= neck_y for v in faces[i][0])
     head, remap = build_object(name, morphed, uvs, faces, keep, skin_material(name + "_Skin", tone))
     paint_lips(head, remap, data_dir)
+    add_bone_weights(head, remap, data_dir)
+    normalize_uvs(head)
 
     eye_coords, eye_uvs, eye_faces = fit_proxy(os.path.join(data_dir, "eyes", "low-poly", "low-poly.mhclo"), morphed)
     eyes, _ = build_object(name + "_Eyes", eye_coords, eye_uvs, eye_faces, lambda i: True,
@@ -380,32 +439,157 @@ def build_head(data_dir, name, gender, seed, tone, eye_color, location):
         for v in obj.data.vertices:
             v.co -= shift
     head["height"] = max(v.co.z for v in head.data.vertices)
-    # Preview only: subdivide so the painted masks get smooth edges.
-    subsurf = head.modifiers.new("Preview", "SUBSURF")
-    subsurf.levels = 2
-    bpy.context.view_layer.objects.active = head
-    bpy.ops.object.modifier_apply(modifier=subsurf.name)
+
     # Cut the neck square to its own axis (the neck leans forward), part way between
     # the neck and head joints, above where it flares into the shoulders.
     neck = to_blender(group_center(morphed, faces, "joint-neck")) - shift
     skull = to_blender(group_center(morphed, faces, "joint-head")) - shift
     axis = (skull - neck).normalized()
     cut = neck + (skull - neck) * 0.3
-    bm = bmesh.new()
-    bm.from_mesh(head.data)
-    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=cut,
-                           plane_no=axis, clear_inner=True)
-    bm.to_mesh(head.data)
-    bm.free()
     head["neck_cut"] = cut
     head["neck_axis"] = axis
-    head.data.update()
+
+    # The game mesh is the unsubdivided head.
+    game = head.copy()
+    game.data = head.data.copy()
+    game.name = name + "_Game"
+    bpy.context.collection.objects.link(game)
+    bisect(game, cut, axis)
+    game.hide_render = True
+
+    # Preview only: subdivide so the painted masks get smooth edges.
+    subsurf = head.modifiers.new("Preview", "SUBSURF")
+    subsurf.levels = 2
+    bpy.context.view_layer.objects.active = head
+    bpy.ops.object.modifier_apply(modifier=subsurf.name)
+    bisect(head, cut, axis)
     paint_masks(head, eyes, gender)
     add_collar(head, name)
     head.location = location
+    game.location = location
 
-    print(f"{name}: {len(remap)} game vertices ({len(head.data.vertices)} after preview subdivision)")
-    return head
+    print(f"{name}: {len(game.data.vertices)} game vertices ({len(head.data.vertices)} after preview subdivision)")
+    return head, game, eyes, skull
+
+
+# --------------------------------------------------------------------------
+# Game export
+# --------------------------------------------------------------------------
+
+
+def to_unity(v):
+    """Blender (right-handed, Z up, face towards -Y) to Unity (left-handed, Y up, face towards +Z).
+
+    The axis swap includes a mirror, which also turns Blender's counter-clockwise front
+    faces into Unity's clockwise ones, so triangle order stays as it is.
+    """
+    return (-v.x, v.z, -v.y)
+
+
+def collect_vertices(obj, pivot, fixed_bone=None):
+    """Splits vertices at UV seams and returns (vertices, triangles).
+
+    Each vertex is (position, normal, uv, [(bone, weight)]), in Unity axes, relative to pivot.
+    """
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    tmp = bpy.data.meshes.new("tmp")
+    bm.to_mesh(tmp)
+    bm.free()
+    tmp.calc_normals_split() if hasattr(tmp, "calc_normals_split") else None
+    uv_layer = tmp.uv_layers.active.data
+    group_names = {g.index: g.name for g in obj.vertex_groups}
+
+    index_of, vertices, triangles = {}, [], []
+    for poly in tmp.polygons:
+        tri = []
+        for li in poly.loop_indices:
+            loop = tmp.loops[li]
+            v = tmp.vertices[loop.vertex_index]
+            uv = uv_layer[li].uv
+            key = (loop.vertex_index, round(uv.x, 5), round(uv.y, 5))
+            if key not in index_of:
+                if fixed_bone:
+                    weights = [(fixed_bone, 1.0)]
+                else:
+                    weights = sorted(((group_names[g.group], g.weight) for g in v.groups if g.weight > 1e-4),
+                                     key=lambda t: -t[1])[:4] or [(KERBAL_SKULL, 1.0)]
+                total = sum(w for _, w in weights)
+                weights = [(b, w / total) for b, w in weights]
+                index_of[key] = len(vertices)
+                vertices.append((to_unity(v.co - pivot), to_unity(v.normal), (uv.x, uv.y), weights))
+            tri.append(index_of[key])
+        triangles.append(tri)
+    bpy.data.meshes.remove(tmp)
+    return vertices, triangles
+
+
+def write_rcm(path, parts):
+    """Writes the Real Cosmonauts mesh format (see src/RealCosmonauts/RcmMesh.cs).
+
+    parts is a list of (vertices, triangles); each part becomes one submesh.
+    """
+    import struct
+    bones = sorted({b for verts, _ in parts for v in verts for b, _ in v[3]})
+    bone_index = {b: i for i, b in enumerate(bones)}
+    all_vertices, submeshes = [], []
+    for verts, tris in parts:
+        base = len(all_vertices)
+        all_vertices.extend(verts)
+        submeshes.append([base + i for tri in tris for i in tri])
+
+    with open(path, "wb") as f:
+        f.write(b"RCM1")
+        f.write(struct.pack("<i", len(bones)))
+        for b in bones:
+            data = b.encode("utf-8")
+            f.write(struct.pack("<i", len(data)) + data)
+        f.write(struct.pack("<i", len(all_vertices)))
+        for pos, nrm, uv, weights in all_vertices:
+            f.write(struct.pack("<3f3f2f", *pos, *nrm, *uv))
+            padded = (weights + [(bones[0], 0.0)] * 4)[:4]
+            for b, w in padded:
+                f.write(struct.pack("<if", bone_index[b], w))
+        f.write(struct.pack("<i", len(submeshes)))
+        for indices in submeshes:
+            f.write(struct.pack("<i", len(indices)))
+            f.write(struct.pack(f"<{len(indices)}i", *indices))
+    print(f"wrote {path}: {len(all_vertices)} vertices, {sum(len(s) for s in submeshes) // 3} triangles, bones {bones}")
+
+
+def bake_texture(preview, path, size=1024):
+    """Bakes the preview skin colour (with hair, brows and lips) into a texture."""
+    scene = bpy.context.scene
+    image = bpy.data.images.new(os.path.basename(path), size, size)
+    mat = preview.data.materials[0]
+    node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    node.image = image
+    mat.node_tree.nodes.active = node
+    for obj in scene.objects:
+        obj.select_set(False)
+    preview.select_set(True)
+    bpy.context.view_layer.objects.active = preview
+    scene.cycles.samples = 16
+    scene.render.bake.use_pass_direct = False
+    scene.render.bake.use_pass_indirect = False
+    scene.render.bake.margin = 8
+    bpy.ops.object.bake(type="DIFFUSE", pass_filter={"COLOR"}, use_clear=True)
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    mat.node_tree.nodes.remove(node)
+    scene.cycles.samples = 128
+    print(f"wrote {path}")
+
+
+def export_head(preview, game, eyes, pivot, out_dir, name):
+    os.makedirs(out_dir, exist_ok=True)
+    skin = collect_vertices(game, pivot)
+    eye_parts = collect_vertices(eyes, pivot, fixed_bone=KERBAL_SKULL)
+    write_rcm(os.path.join(out_dir, name.lower() + ".rcm"), [skin, eye_parts])
+    bake_texture(preview, os.path.join(out_dir, name.lower() + "_skin.png"))
 
 
 def add_collar(head, name):
@@ -494,6 +678,8 @@ def main():
     parser.add_argument("--out", required=True, help="output folder")
     parser.add_argument("--resolution", type=int, default=640)
     parser.add_argument("--blend", help="also save the scene to this .blend file")
+    parser.add_argument("--export", help="write game meshes (.rcm) and baked skin textures to this folder")
+    parser.add_argument("--no-render", action="store_true", help="skip the preview renders")
     args = parser.parse_args(argv)
     os.makedirs(args.out, exist_ok=True)
 
@@ -508,8 +694,12 @@ def main():
         ("Female_B", "female", 11, (0.48, 0.30, 0.22), "green"),
     ]
     built = [build_head(args.mh, n, g, s, t, e, (i * 1.0, 0, 0)) for i, (n, g, s, t, e) in enumerate(heads)]
-    for head, (name, *_rest) in zip(built, heads):
-        render_views(cam, head, args.out, name)
+    if args.export:
+        for (preview, game, eyes, pivot), (name, *_rest) in zip(built, heads):
+            export_head(preview, game, eyes, pivot, args.export, name)
+    if not args.no_render:
+        for (preview, *_rest), (name, *_r) in zip(built, heads):
+            render_views(cam, preview, args.out, name)
     if args.blend:
         bpy.ops.wm.save_as_mainfile(filepath=args.blend)
 

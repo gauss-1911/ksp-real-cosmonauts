@@ -20,7 +20,9 @@ namespace RealCosmonauts
             if (Settings.DumpKerbalModels)
                 SafeDump("MainMenu");
 
-            // Model replacement is added in milestone 3 (see docs/ROADMAP.md).
+            // Dump first, so the report shows the stock models.
+            if (Settings.ReplaceModels)
+                HeadSwapper.PatchAllPrefabs();
         }
 
         internal static void SafeDump(string sceneLabel)

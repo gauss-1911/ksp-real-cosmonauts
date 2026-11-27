@@ -32,11 +32,13 @@ dotnet build src/RealCosmonauts -c Release -p:KSPRoot="/path/to/Kerbal Space Pro
 ```
 
 You can set the `KSP_ROOT` environment variable instead of passing `KSPRoot`.
-Without the .NET SDK you can build with Mono instead:
-`tools/build-mono.sh "/path/to/KSP_x64_Data/Managed"`.
 The build copies `RealCosmonauts.dll` into `GameData/RealCosmonauts/Plugins/` and then
 copies the whole `GameData/RealCosmonauts` folder into the game. Pass
 `-p:InstallToKSP=false` to skip the copy into the game.
+
+Without the .NET SDK you can build with Mono instead. This only builds the DLL into
+`GameData/RealCosmonauts/Plugins/`; copy the folder into the game yourself:
+`tools/build-mono.sh "/path/to/KSP_x64_Data/Managed"`.
 
 ## Project layout
 
@@ -56,4 +58,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/TECHNICAL_NOTES.md](docs/TECHNI
 
 ## License
 
-[MIT](LICENSE)
+Code: [MIT](LICENSE).
+
+The head models and the eye texture are derived from [MakeHuman](http://www.makehumancommunity.org/)
+1.x assets, which the MakeHuman team released under CC0 1.0. See [art/README.md](art/README.md#credits).
