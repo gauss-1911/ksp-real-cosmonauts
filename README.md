@@ -18,6 +18,10 @@ Early development. Code and assets are a work in progress.
 1. Download the archive from the Releases page.
 2. Copy the `GameData/RealCosmonauts` folder into your game's `GameData` folder.
 
+## Developers
+
+- **gauss** ([@gauss-1911](https://github.com/gauss-1911))
+
 ## License
 
 [MIT](LICENSE)
