@@ -11,7 +11,8 @@
     <LangVersion>8.0</LangVersion>
     <AssemblyName>RealCosmonauts</AssemblyName>
     <RootNamespace>RealCosmonauts</RootNamespace>
-    <Version>0.0.1</Version>
+    <!-- Version and assembly attributes live in AssemblyInfo.cs so every build tool agrees. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -39,6 +40,12 @@
     <Reference Include="UnityEngine.CoreModule" HintPath="$(KSPManaged)/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.AnimationModule" HintPath="$(KSPManaged)/UnityEngine.AnimationModule.dll" Private="false" />
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(KSPManaged)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.SharedInternalsModule" HintPath="$(KSPManaged)/UnityEngine.SharedInternalsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(KSPManaged)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(KSPManaged)/UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(KSPManaged)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(KSPManaged)/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(KSPManaged)/UnityEngine.InputLegacyModule.dll" Private="false" />
   </ItemGroup>
 
   <Target Name="CheckKSPRoot" BeforeTargets="ResolveAssemblyReferences">

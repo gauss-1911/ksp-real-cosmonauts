@@ -32,6 +32,8 @@ dotnet build src/RealCosmonauts -c Release -p:KSPRoot="/path/to/Kerbal Space Pro
 ```
 
 You can set the `KSP_ROOT` environment variable instead of passing `KSPRoot`.
+Without the .NET SDK you can build with Mono instead:
+`tools/build-mono.sh "/path/to/KSP_x64_Data/Managed"`.
 The build copies `RealCosmonauts.dll` into `GameData/RealCosmonauts/Plugins/` and then
 copies the whole `GameData/RealCosmonauts` folder into the game. Pass
 `-p:InstallToKSP=false` to skip the copy into the game.
