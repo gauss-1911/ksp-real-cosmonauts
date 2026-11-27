@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Build:  dotnet build -c Release -p:KSPRoot="C:\Path\To\Kerbal Space Program"
+    Or set KSPRoot once in src/RealCosmonauts/RealCosmonauts.csproj.user (git-ignored).
+    The game's DLLs are referenced from the local KSP install and are never committed.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>8.0</LangVersion>
+    <AssemblyName>RealCosmonauts</AssemblyName>
+    <RootNamespace>RealCosmonauts</RootNamespace>
+    <Version>0.0.1</Version>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!-- Where the game's managed DLLs live (Windows/Linux x64, Linux, macOS). -->
+  <PropertyGroup>
+    <KSPRoot Condition="'$(KSPRoot)' == ''">$(KSP_ROOT)</KSPRoot>
+    <KSPManaged Condition="Exists('$(KSPRoot)/KSP_x64_Data/Managed')">$(KSPRoot)/KSP_x64_Data/Managed</KSPManaged>
+    <KSPManaged Condition="'$(KSPManaged)' == '' And Exists('$(KSPRoot)/KSP_Data/Managed')">$(KSPRoot)/KSP_Data/Managed</KSPManaged>
+    <KSPManaged Condition="'$(KSPManaged)' == '' And Exists('$(KSPRoot)/KSP.app/Contents/Resources/Data/Managed')">$(KSPRoot)/KSP.app/Contents/Resources/Data/Managed</KSPManaged>
+    <ModGameData>$(MSBuildThisFileDirectory)../../GameData/RealCosmonauts</ModGameData>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets the project build on any OS without a .NET Framework targeting pack. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="$(KSPManaged)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="Assembly-CSharp-firstpass" HintPath="$(KSPManaged)/Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(KSPManaged)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(KSPManaged)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(KSPManaged)/UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(KSPManaged)/UnityEngine.PhysicsModule.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="CheckKSPRoot" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(KSPManaged)' == ''"
+           Text="KSP install not found. Pass -p:KSPRoot=&quot;path to Kerbal Space Program&quot; or set the KSP_ROOT environment variable." />
+  </Target>
+
+  <!-- Copy the plugin into the mod's GameData folder, and into the game when KSPRoot is set. -->
+  <Target Name="CopyToGameData" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModGameData)/Plugins" />
+    <ItemGroup>
+      <ModFiles Include="$(ModGameData)/**/*" Exclude="$(ModGameData)/**/.gitkeep;$(ModGameData)/PluginData/**" />
+    </ItemGroup>
+    <Copy Condition="'$(KSPRoot)' != '' And '$(InstallToKSP)' != 'false'"
+          SourceFiles="@(ModFiles)"
+          DestinationFiles="@(ModFiles->'$(KSPRoot)/GameData/RealCosmonauts/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+</Project>
