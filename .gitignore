@@ -38,3 +38,12 @@ KSP_x64_Data/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local, game-derived data (Kerbal dumps, exported meshes). Never commit or ship.
+GameData/RealCosmonauts/PluginData/*
+!GameData/RealCosmonauts/PluginData/.gitkeep
+art/reference/
+
+# Blender backups
+*.blend1
+*.blend2
