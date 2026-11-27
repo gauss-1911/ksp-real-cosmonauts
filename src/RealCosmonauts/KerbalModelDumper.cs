@@ -256,6 +256,7 @@ namespace RealCosmonauts
                     Transform[] all = animRoot.GetComponentsInChildren<Transform>(true);
                     Vector3[] restPos = all.Select(t => t.localPosition).ToArray();
                     Vector3[] restScale = all.Select(t => t.localScale).ToArray();
+                    string[] keys = all.Select(t => PathOf(t, clone.transform)).ToArray();
 
                     try
                     {
@@ -264,9 +265,8 @@ namespace RealCosmonauts
                             source.Value.SampleAnimation(animRoot.gameObject, source.Value.length * s / SamplesPerClip);
                             for (int i = 0; i < all.Length; i++)
                             {
-                                string key = PathOf(all[i], clone.transform);
-                                Track(moved, key, (all[i].localPosition - restPos[i]).magnitude);
-                                Track(scaled, key, (all[i].localScale - restScale[i]).magnitude);
+                                Track(moved, keys[i], (all[i].localPosition - restPos[i]).magnitude);
+                                Track(scaled, keys[i], (all[i].localScale - restScale[i]).magnitude);
                             }
                         }
                     }
